@@ -4,14 +4,17 @@ import pygui_cython as pygui
 import glfw
 import OpenGL.GL as gl
 from pygui_cython.pygui_demo import demo_fonts_init, pygui_demo_window, limit_fps
-
+from game import Game
 
 vsync_enabled = pygui.Bool(True)
-show_pygui_demo = pygui.Bool(True)
-show_imgui_demo = pygui.Bool(True)
-enable_framecap = pygui.Bool(False)
+show_pygui_demo = pygui.Bool(False)
+show_imgui_demo = pygui.Bool(False)
+enable_framecap = pygui.Bool(True)
 max_framerate = pygui.Int(60)
 clear_color = pygui.Vec4(0.45, 0.55, 0.60, 1)
+
+
+window_size = (1200, 800)
 
 
 def render():
@@ -50,7 +53,7 @@ def main():
     glfw.window_hint(glfw.CONTEXT_VERSION_MINOR, 2)
     glfw.window_hint(glfw.RESIZABLE, glfw.TRUE)
 
-    window = glfw.create_window(1024, 768, "Hello World!", None, None)
+    window = glfw.create_window(window_size[0], window_size[1], "Hello World!", None, None)
     if window is None:
         print("Failed to create window! Terminating")
         glfw.terminate()
@@ -100,6 +103,8 @@ def main():
 
     demo_fonts_init()
 
+    game = Game()
+
     try:
         while not glfw.window_should_close(window):
             glfw.poll_events()
@@ -111,6 +116,7 @@ def main():
             # and disable vsync inside pygui if desired.
             glfw.make_context_current(window)
 
+            game.draw()
             render()
             pygui.render()
 
