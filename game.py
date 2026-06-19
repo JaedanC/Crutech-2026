@@ -7,32 +7,6 @@ class Game:
     def __init__(self):
         self.first_frame = True
 
-    def on_start(self):
-        """
-        On game start do this. Save any variables you want to initilise with
-        self.variable_name = [value_to_start_with]
-        """
-        self.sandbox_size = pygui.Vec2(500, 500)
-        self.player = Circle(
-            pygui.Vec2(self.sandbox_size.x / 2, self.sandbox_size.y / 2),
-            pygui.Vec4(0, 1, 0, 1),
-            pygui.Float(15),
-            pygui.Bool(True),
-            pygui.Float(3),
-        )
-        self.player_speed = pygui.Int(10)
-        self.wall = Rect(
-            pygui.Vec2(250, 400),
-            pygui.Vec4(0.3, 0.1, 0.7, 1),
-            pygui.Vec2(150, 20),
-            pygui.Bool(True),
-        )
-        self.game_objects: List[Shape] = [
-            self.player,
-            self.wall,
-        ]
-        self.game_paused = pygui.Bool(False)
-
     def _push_game_window(self):
         """All this function does is give us the drawing 'Sandbox' we see in the
         Game window. The origin is the TOP LEFT coordinate of the Game Sandbox. This
@@ -83,6 +57,34 @@ class Game:
         draw_list.pop_clip_rect()
         draw_list.pop_clip_rect()
 
+    def on_start(self):
+        """
+        On game start do this. Save any variables you want to initilise with
+        self.variable_name = [value_to_start_with]
+        """
+        self.sandbox_size = pygui.Vec2(500, 500)
+        self.player_shot: Optional[Rect] = None
+        self.player_shoot_speed = pygui.Int(5)
+        self.player_speed = pygui.Int(5)
+        self.player = Rect(
+            pygui.Vec2(self.sandbox_size.x / 2, 480),
+            pygui.Vec4(0, 1, 0, 1),
+            pygui.Vec2(10, 20),
+            pygui.Bool(True),
+        )
+        self.floor = Rect(
+            pygui.Vec2(250, 495),
+            pygui.Vec4(0.4, 0.4, 0.4, 1),
+            pygui.Vec2(500, 10),
+            pygui.Bool(True),
+        )
+        self.game_objects: List[Shape] = [
+            self.player,
+            self.floor,
+        ]
+        self.is_shooting = pygui.Bool(False)
+        self.game_paused = pygui.Bool(False)
+
     def draw(self):
         """
         Every game tick/frame this is called. This is where your game logic goes
@@ -113,11 +115,37 @@ class Game:
             
             # Let's move the player, but constrain them to the sandbox. Use WASD
             left_right = int(pygui.is_key_down(pygui.KEY_D)) - int(pygui.is_key_down(pygui.KEY_A))
-            up_down    = int(pygui.is_key_down(pygui.KEY_S)) - int(pygui.is_key_down(pygui.KEY_W))
             self.player.position.x += left_right * self.player_speed.value
-            self.player.position.y += up_down * self.player_speed.value
             clamp_vec2(self.player.position, (0, 0), self.sandbox_size)
 
+            # --------------------------------------------------------------------------------------------
+            # --------------------------------------------------------------------------------------------
+
+            # Let's shoot from the player
+            if not self.is_shooting and pygui.is_key_pressed(pygui.KEY_SPACE):
+                # Shoot the hit box
+                self.player_shot = Rect(
+                    pygui.Vec2(
+                        self.player.position.x,
+                        self.player.position.y - self.player.size.y / 2 - 5
+                    ),
+                    pygui.Vec4(1, 0.4, 0.4, 1),
+                    pygui.Vec2(5, 5),
+                    pygui.Bool(True),
+                )
+                self.is_shooting.value = True
+
+            # Continue extending the shot until it hits the roof
+            if self.is_shooting and self.player_shot is not None:
+                top_left, bottom_right = self.player_shot.get_bounds()
+                self.player_shot.set_bounds(add_vec2(
+                    top_left,
+                    pygui.Vec2(0, -self.player_shoot_speed.value)
+                ), bottom_right)
+                top_left, bottom_right = self.player_shot.get_bounds()
+                if top_left.y < 0:
+                    self.player_shot = None
+                    self.is_shooting.value = False
 
 
             # --------------------------------------------------------------------------------------------
@@ -127,6 +155,8 @@ class Game:
             for obj in self.game_objects:
                 obj.draw(origin, draw_list)
 
+            if self.player_shot is not None:
+                self.player_shot.draw(origin, draw_list)
 
             self._pop_game_window(draw_list)
         pygui.end()
@@ -136,7 +166,6 @@ class Game:
             if pygui.tree_node("Player", pygui.TREE_NODE_FLAGS_DEFAULT_OPEN):
                 pygui.slider_float2("Position", self.player.position.as_floatptrs(), 0, self.sandbox_size[0])
                 pygui.color_edit3("Colour",     self.player.colour)
-                pygui.slider_float("Radius",    self.player.radius, 1, 200)
                 pygui.checkbox("Filled",        self.player.is_filled)
                 if self.player.is_filled:
                     pygui.begin_disabled()
@@ -144,5 +173,6 @@ class Game:
                 if self.player.is_filled:
                     pygui.end_disabled()
                 pygui.slider_int("Speed", self.player_speed, 1, 20)
+                pygui.slider_int("Player shot", self.player_shoot_speed, 1, 20)
                 pygui.tree_pop()
         pygui.end()

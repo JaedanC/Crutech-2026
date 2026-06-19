@@ -91,17 +91,27 @@ class Rect(Shape):
         self.size = size
         self.is_filled = is_filled
         self.thickness = thickness or pygui.Float(1)
+    
+    def set_bounds(self, top_left: pygui.Vec2, bottom_right: pygui.Vec2):
+        self.size.x = bottom_right.x - top_left.x
+        self.size.y = bottom_right.y - top_left.y
+        self.position.x = top_left.x + self.size.x / 2
+        self.position.y = top_left.y + self.size.y / 2
 
-    @override
-    def draw(self, origin: Tuple[float, float], draw_list: pygui.ImDrawList):
-        top_left = (
+    def get_bounds(self) -> Tuple[pygui.Vec2, pygui.Vec2]:
+        top_left = pygui.Vec2(
             self.position.x - self.size[0] / 2,
             self.position.y - self.size[1] / 2
         )
-        bottom_right = (
+        bottom_right = pygui.Vec2(
             self.position.x + self.size[0] / 2,
             self.position.y + self.size[1] / 2
         )
+        return top_left, bottom_right
+
+    @override
+    def draw(self, origin: Tuple[float, float], draw_list: pygui.ImDrawList):
+        top_left, bottom_right = self.get_bounds()
         if self.is_filled:
             draw_list.add_rect_filled(
                 add_tuple(origin, top_left),
