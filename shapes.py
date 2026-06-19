@@ -54,7 +54,7 @@ class Shape(ABC):
         self.colour.w = colour[3]
 
     @abstractmethod
-    def draw(self):
+    def draw(self, origin: Tuple[float, float], draw_list: pygui.ImDrawList):
         pass
 
 
@@ -84,5 +84,34 @@ class Circle(Shape):
             )
 
 
-class Rect:
-    pass
+class Rect(Shape):
+    def __init__(self, position: pygui.Vec2, colour: pygui.Vec4, size: pygui.Vec2, is_filled: pygui.Bool = None, thickness: Optional[pygui.Float] = None):
+        """Thickness only relevant if is_filled is False"""
+        super().__init__(position, colour)
+        self.size = size
+        self.is_filled = is_filled
+        self.thickness = thickness or pygui.Float(1)
+
+    @override
+    def draw(self, origin: Tuple[float, float], draw_list: pygui.ImDrawList):
+        top_left = (
+            self.position.x - self.size[0] / 2,
+            self.position.y - self.size[1] / 2
+        )
+        bottom_right = (
+            self.position.x + self.size[0] / 2,
+            self.position.y + self.size[1] / 2
+        )
+        if self.is_filled:
+            draw_list.add_rect_filled(
+                add_tuple(origin, top_left),
+                add_tuple(origin, bottom_right),
+                self.colour.to_u32(),
+            )
+        else:
+            draw_list.add_rect(
+                add_tuple(origin, top_left),
+                add_tuple(origin, bottom_right),
+                self.colour.to_u32(),
+                thickness=self.thickness.value,
+            )

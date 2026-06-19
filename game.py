@@ -1,4 +1,4 @@
-import math
+from typing import List
 import pygui_cython as pygui
 from shapes import *
 
@@ -20,6 +20,17 @@ class Game:
             pygui.Bool(True),
             pygui.Float(3),
         )
+        self.player_speed = pygui.Int(10)
+        self.wall = Rect(
+            pygui.Vec2(250, 400),
+            pygui.Vec4(0.3, 0.1, 0.7, 1),
+            pygui.Vec2(150, 20),
+            pygui.Bool(True),
+        )
+        self.game_objects: List[Shape] = [
+            self.player,
+            self.wall,
+        ]
         self.game_paused = pygui.Bool(False)
 
     def _push_game_window(self):
@@ -66,7 +77,7 @@ class Game:
         origin = pygui.get_cursor_screen_pos()
         pygui.dummy((0, 0))
 
-        return draw_list, origin
+        return origin, draw_list
 
     def _pop_game_window(self, draw_list: pygui.ImDrawList):
         draw_list.pop_clip_rect()
@@ -91,21 +102,30 @@ class Game:
                 self.on_start()
                 self.first_frame = False
 
-            draw_list, origin = self._push_game_window()
+            origin, draw_list = self._push_game_window()
 
-            self.player.draw(origin, draw_list)
+            # --------------------------------------------------------------------------------------------
+            # --------------------------------------------------------------------------------------------
 
             # Let's make the player rainbow. We'll use the frame count to do this
             frames_since_start = pygui.get_frame_count()
             self.player.set_colour_hsv(frames_since_start % 255, 255, 255)
             
             # Let's move the player, but constrain them to the sandbox. Use WASD
-            move_speed = 5
             left_right = int(pygui.is_key_down(pygui.KEY_D)) - int(pygui.is_key_down(pygui.KEY_A))
             up_down    = int(pygui.is_key_down(pygui.KEY_S)) - int(pygui.is_key_down(pygui.KEY_W))
-            self.player.position.x += left_right * move_speed
-            self.player.position.y += up_down * move_speed
+            self.player.position.x += left_right * self.player_speed.value
+            self.player.position.y += up_down * self.player_speed.value
             clamp_vec2(self.player.position, (0, 0), self.sandbox_size)
+
+
+
+            # --------------------------------------------------------------------------------------------
+            # --------------------------------------------------------------------------------------------
+
+
+            for obj in self.game_objects:
+                obj.draw(origin, draw_list)
 
 
             self._pop_game_window(draw_list)
@@ -123,6 +143,6 @@ class Game:
                 pygui.slider_float("Player Thickness", self.player.thickness, 1, 10)
                 if self.player.is_filled:
                     pygui.end_disabled()
-
+                pygui.slider_int("Speed", self.player_speed, 1, 20)
                 pygui.tree_pop()
         pygui.end()
