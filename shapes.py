@@ -32,9 +32,9 @@ def clamp_vec2(value: pygui.Vec2, low: Tuple[float, float], high: Tuple[float, f
 
 
 class Shape(ABC):
-    def __init__(self, position: pygui.Vec2, colour: pygui.Vec4):
-        self.position = position
-        self.colour = colour
+    def __init__(self, position: Tuple[float, float], colour: Tuple[float, float, float, float]):
+        self.position = pygui.Vec2(*position)
+        self.colour = pygui.Vec4(*colour)
 
     def get_colour_u32(self) -> int:
         self.colour.to_u32()
@@ -59,12 +59,12 @@ class Shape(ABC):
 
 
 class Circle(Shape):
-    def __init__(self, position: pygui.Vec2, colour: pygui.Vec4, radius: pygui.Float, is_filled: pygui.Bool = None, thickness: Optional[pygui.Float] = None):
+    def __init__(self, position: Tuple[float, float], radius: float, colour: Tuple[float, float, float, float], is_filled=True, thickness=1):
         """Thickness only relevant if is_filled is False"""
         super().__init__(position, colour)
-        self.radius = radius
-        self.is_filled = is_filled
-        self.thickness = thickness or pygui.Float(1)
+        self.radius = pygui.Float(radius)
+        self.is_filled = pygui.Bool(is_filled)
+        self.thickness = pygui.Float(thickness)
 
     @override
     def draw(self, origin: Tuple[float, float], draw_list: pygui.ImDrawList):
@@ -85,25 +85,31 @@ class Circle(Shape):
 
 
 class Rect(Shape):
-    def __init__(self, position: pygui.Vec2, colour: pygui.Vec4, size: pygui.Vec2, is_filled: pygui.Bool = None, thickness: Optional[pygui.Float] = None):
+    def __init__(self, position: Tuple[float, float], size: Tuple[float, float], colour: Tuple[float, float, float, float], is_filled=True, thickness=1):
         """Thickness only relevant if is_filled is False"""
         super().__init__(position, colour)
-        self.size = size
-        self.is_filled = is_filled
-        self.thickness = thickness or pygui.Float(1)
+        self.size = pygui.Vec2(*size)
+        self.is_filled = pygui.Bool(is_filled)
+        self.thickness = pygui.Float(thickness)
     
-    def set_bounds(self, top_left: pygui.Vec2, bottom_right: pygui.Vec2):
-        self.size.x = bottom_right.x - top_left.x
-        self.size.y = bottom_right.y - top_left.y
-        self.position.x = top_left.x + self.size.x / 2
-        self.position.y = top_left.y + self.size.y / 2
+    def set_bounds(self, top_left: Tuple[float, float], bottom_right: Tuple[float, float]):
+        """In some circumstances, is may be easier to manipulate the position of a rectangle
+        using it's TOP LEFT and BOTTOM RIGHT points. Uses this function to set their positions.
+        This will update self.position and self.size accordingly."""
+        self.size.x = bottom_right[0] - top_left[0]
+        self.size.y = bottom_right[1] - top_left[1]
+        self.position.x = top_left[0] + self.size.x / 2
+        self.position.y = top_left[1] + self.size.y / 2
 
-    def get_bounds(self) -> Tuple[pygui.Vec2, pygui.Vec2]:
-        top_left = pygui.Vec2(
+    def get_bounds(self) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+        """In some circumstances, knowing the position of the TOP LEFT and BOTTOM RIGHT
+        of the Rectangle may be useful. Uses this function to read that out. Returns them
+        both inside a Tuple."""
+        top_left = (
             self.position.x - self.size[0] / 2,
             self.position.y - self.size[1] / 2
         )
-        bottom_right = pygui.Vec2(
+        bottom_right = (
             self.position.x + self.size[0] / 2,
             self.position.y + self.size[1] / 2
         )

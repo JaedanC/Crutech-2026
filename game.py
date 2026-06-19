@@ -1,6 +1,8 @@
 from typing import List
 import pygui_cython as pygui
 from shapes import *
+from bubble import Bubble
+import random
 
 
 class Game:
@@ -63,27 +65,37 @@ class Game:
         self.variable_name = [value_to_start_with]
         """
         self.sandbox_size = pygui.Vec2(500, 500)
+
         self.player_shot: Optional[Rect] = None
         self.player_shoot_speed = pygui.Int(5)
         self.player_speed = pygui.Int(5)
         self.player = Rect(
-            pygui.Vec2(self.sandbox_size.x / 2, 480),
-            pygui.Vec4(0, 1, 0, 1),
-            pygui.Vec2(10, 20),
-            pygui.Bool(True),
+            (self.sandbox_size.x / 2, 480),
+            (10, 20),
+            (0, 1, 0, 1),
         )
+        self.bubbles: List[Bubble] = []
         self.floor = Rect(
-            pygui.Vec2(250, 495),
-            pygui.Vec4(0.4, 0.4, 0.4, 1),
-            pygui.Vec2(500, 10),
-            pygui.Bool(True),
+            position=(250, 495),
+            size=(500, 10),
+            colour=(0.4, 0.4, 0.4, 1),
         )
-        self.game_objects: List[Shape] = [
-            self.player,
-            self.floor,
-        ]
+        self.game_objects: List[Shape] = []
         self.is_shooting = pygui.Bool(False)
         self.game_paused = pygui.Bool(False)
+        self.gravity = pygui.Float(0.2)
+
+    def create_bubbles(self, how_many: int):
+        for _ in range(how_many):
+            bubble = Bubble(
+                (
+                    random.randint(5, 496),
+                    random.randint(50, 150)
+                ),
+                5,
+                self.gravity
+            )
+            self.bubbles.append(bubble)
 
     def draw(self):
         """
@@ -125,43 +137,53 @@ class Game:
             if not self.is_shooting and pygui.is_key_pressed(pygui.KEY_SPACE):
                 # Shoot the hit box
                 self.player_shot = Rect(
-                    pygui.Vec2(
+                    (
                         self.player.position.x,
                         self.player.position.y - self.player.size.y / 2 - 5
                     ),
-                    pygui.Vec4(1, 0.4, 0.4, 1),
-                    pygui.Vec2(5, 5),
-                    pygui.Bool(True),
+                    (5, 5),
+                    (1, 0.4, 0.4, 1),
                 )
                 self.is_shooting.value = True
 
             # Continue extending the shot until it hits the roof
             if self.is_shooting and self.player_shot is not None:
                 top_left, bottom_right = self.player_shot.get_bounds()
-                self.player_shot.set_bounds(add_vec2(
-                    top_left,
-                    pygui.Vec2(0, -self.player_shoot_speed.value)
-                ), bottom_right)
+                self.player_shot.set_bounds(
+                    add_tuple(top_left, (0, -self.player_shoot_speed.value)),
+                    bottom_right
+                )
                 top_left, bottom_right = self.player_shot.get_bounds()
-                if top_left.y < 0:
+                if top_left[1] < 0:
                     self.player_shot = None
                     self.is_shooting.value = False
-
+            
+            # Update the balls
+            for bubble in self.bubbles:
+                bubble.tick(self.sandbox_size)
 
             # --------------------------------------------------------------------------------------------
             # --------------------------------------------------------------------------------------------
+
+            self.game_objects = [
+                self.player,
+                self.floor,
+            ]
+            self.game_objects.extend(self.bubbles)
+            if self.player_shot is not None:
+                self.game_objects.append(self.player_shot)
 
 
             for obj in self.game_objects:
                 obj.draw(origin, draw_list)
 
-            if self.player_shot is not None:
-                self.player_shot.draw(origin, draw_list)
-
             self._pop_game_window(draw_list)
         pygui.end()
 
         if pygui.begin("Tools"):
+            if pygui.button("Create bubbles"):
+                self.create_bubbles(5)
+
             pygui.slider_float2("Game Window Size", self.sandbox_size.as_floatptrs(), 1, 1000)
             if pygui.tree_node("Player", pygui.TREE_NODE_FLAGS_DEFAULT_OPEN):
                 pygui.slider_float2("Position", self.player.position.as_floatptrs(), 0, self.sandbox_size[0])
@@ -173,6 +195,8 @@ class Game:
                 if self.player.is_filled:
                     pygui.end_disabled()
                 pygui.slider_int("Speed", self.player_speed, 1, 20)
-                pygui.slider_int("Player shot", self.player_shoot_speed, 1, 20)
+                pygui.slider_int("Shot speed", self.player_shoot_speed, 1, 20)
                 pygui.tree_pop()
+            
+            pygui.slider_float("Gravity", self.gravity, 0.0, 0.5)
         pygui.end()
