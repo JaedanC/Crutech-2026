@@ -71,7 +71,7 @@ class Game:
         self.player_speed = pygui.Int(5)
         self.player = Rect(
             (self.sandbox_size.x / 2, 480),
-            (10, 20),
+            (20, 40),
             (0, 1, 0, 1),
         )
         self.bubbles: List[Bubble] = []
