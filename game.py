@@ -1,6 +1,8 @@
 from typing import List
 import pygui_cython as pygui
 from shapes import *
+from ball import Ball
+import random
 
 
 class Game:
@@ -13,25 +15,42 @@ class Game:
         self.variable_name = [value_to_start_with]
         """
         self.sandbox_size = pygui.Vec2(500, 500)
-        self.player = Circle(
-            pygui.Vec2(self.sandbox_size.x / 2, self.sandbox_size.y / 2),
+        self.player = Rect(
+            pygui.Vec2(250, 460),
             pygui.Vec4(0, 1, 0, 1),
-            pygui.Float(15),
+            pygui.Vec2(30, 40),
             pygui.Bool(True),
-            pygui.Float(3),
         )
+        # self.player = Circle(
+        #     pygui.Vec2(self.sandbox_size.x / 2, self.sandbox_size.y / 2),
+        #     pygui.Vec4(0, 1, 0, 1),
+        #     pygui.Float(15),
+        #     pygui.Bool(True),
+        #     pygui.Float(3),
+        # )
+        # self.ball = Ball(
+        #     pygui.Vec2(0, 0),
+        #     pygui.Float(18),
+        #     pygui.Vec2(1, 0),
+        #     pygui.Vec4(0, 0, 1, 1),
+        #     pygui.Float(0)
+        # )
+        self.balls = []
         self.player_speed = pygui.Int(10)
         self.wall = Rect(
-            pygui.Vec2(250, 400),
-            pygui.Vec4(0.3, 0.1, 0.7, 1),
-            pygui.Vec2(150, 20),
+            pygui.Vec2(250, 491),
+            pygui.Vec4(1, 0, 1, 1),
+            pygui.Vec2(500, 20),
             pygui.Bool(True),
         )
+        self.spike = None
         self.game_objects: List[Shape] = [
             self.player,
             self.wall,
         ]
+
         self.game_paused = pygui.Bool(False)
+        self.john2 = pygui.Bool(False)
 
     def _push_game_window(self):
         """All this function does is give us the drawing 'Sandbox' we see in the
@@ -118,13 +137,44 @@ class Game:
             self.player.position.y += up_down * self.player_speed.value
             clamp_vec2(self.player.position, (0, 0), self.sandbox_size)
 
+            if self.john2.value:
+                self.player.radius.value += 1
+            
+            # self.ball.tick()
+            for b in self.balls:
+                b: Ball
+                b.set_colour_hsv(frames_since_start + random.randint(0, 255), 255, 255)
+                b.tick(self.sandbox_size)
+            
+            if pygui.is_key_down(pygui.KEY_SPACE) and self.spike is None:
+                self.spike = Rect(
+                    pygui.Vec2(self.player.position.x, self.player.position.y - self.player.size.y / 2),
+                    pygui.Vec4(1, 1, 1, 1),
+                    pygui.Vec2(4, 0),
+                    pygui.Bool(True),
+                )
+
+            if self.spike is not None:
+                # Update the spike
+                speed = 5
+                self.spike.size.y += speed * 2
+                self.spike.position.y -= speed
+
+                # Kill the spike when it reaches the top or reaches a ball
+                reached_the_top = (self.spike.position.y - self.spike.size.y / 2) < 0
+                touched_a_ball = False # We'll implement this later. For now, let's make this False
+                if reached_the_top or touched_a_ball:
+                    self.spike = None
+                
+            if self.spike is not None:
+                self.spike.draw(origin, draw_list)
 
 
             # --------------------------------------------------------------------------------------------
             # --------------------------------------------------------------------------------------------
 
 
-            for obj in self.game_objects:
+            for obj in self.game_objects + self.balls:
                 obj.draw(origin, draw_list)
 
 
@@ -132,11 +182,26 @@ class Game:
         pygui.end()
 
         if pygui.begin("Tools"):
+            if pygui.button("Create ball"):
+                # Create a ball...
+                for _ in range(100):
+                    self.balls.append(Ball(
+                        pygui.Vec2(random.randint(0, 500), random.randint(0, 100)),
+                        pygui.Float(10),
+                        pygui.Vec2(
+                            random.random() * 2 - 1,
+                            random.random() * 2 - 1
+                        ),
+                        pygui.Vec4(0, 0, 1, 1),
+                        pygui.Float(1.1)
+                    ))
+
             pygui.slider_float2("Game Window Size", self.sandbox_size.as_floatptrs(), 1, 1000)
             if pygui.tree_node("Player", pygui.TREE_NODE_FLAGS_DEFAULT_OPEN):
                 pygui.slider_float2("Position", self.player.position.as_floatptrs(), 0, self.sandbox_size[0])
                 pygui.color_edit3("Colour",     self.player.colour)
-                pygui.slider_float("Radius",    self.player.radius, 1, 200)
+                # pygui.slider_float("Radius",    self.player.radius, 1, 200)
+                pygui.slider_float2("Size", self.player.size.as_floatptrs(), 0, 500)
                 pygui.checkbox("Filled",        self.player.is_filled)
                 if self.player.is_filled:
                     pygui.begin_disabled()
@@ -144,5 +209,7 @@ class Game:
                 if self.player.is_filled:
                     pygui.end_disabled()
                 pygui.slider_int("Speed", self.player_speed, 1, 20)
+                pygui.checkbox("Truth nukeify", self.john2)
+                pygui.color_picker4("Wall Colour", self.wall.colour)
                 pygui.tree_pop()
         pygui.end()
